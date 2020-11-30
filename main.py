@@ -25,10 +25,10 @@ if __name__ == "__main__":
     clientPortLabel = Label(connectionConfigWrapper, text="Klient port:")
     clientPortLabel.grid(row=1, column=0, sticky=W, padx=10, pady=10)
 
-    clientIPEntry = Entry(connectionConfigWrapper)
+    clientIPEntry = Entry(connectionConfigWrapper, width=30)
     clientIPEntry.grid(row=0, column=1, pady=10)
     set_entry(clientIPEntry, "127.0.0.1")
-    clientPortEntry = Entry(connectionConfigWrapper)
+    clientPortEntry = Entry(connectionConfigWrapper, width=30)
     clientPortEntry.grid(row=1, column=1, pady=10)
     set_entry(clientPortEntry, "8000")
 
@@ -37,10 +37,10 @@ if __name__ == "__main__":
     serverPortLabel = Label(connectionConfigWrapper, text="Server port:")
     serverPortLabel.grid(row=1, column=2, sticky=W, padx=10, pady=10)
 
-    serverIPEntry = Entry(connectionConfigWrapper)
+    serverIPEntry = Entry(connectionConfigWrapper, width=30)
     serverIPEntry.grid(row=0, column=3, pady=10)
     set_entry(serverIPEntry, "127.0.0.2")
-    serverPortEntry = Entry(connectionConfigWrapper)
+    serverPortEntry = Entry(connectionConfigWrapper, width=30)
     serverPortEntry.grid(row=1, column=3, pady=10)
     set_entry(serverPortEntry, "8001")
 
@@ -68,11 +68,15 @@ if __name__ == "__main__":
     receiverRadioBtn.grid(row=0, column=1, padx=10)
     transmitterRadioBtn = Radiobutton(middleFrame, text="Vysielač", variable=deviceState, value="transmitter", state="disabled")
     transmitterRadioBtn.grid(row=0, column=2, padx=10)
+    fragmentSizeLabel = Label(middleFrame, text="Veľkosť fragmentov:")
+    fragmentSizeLabel.grid(row=0, column=3, padx=10)
+    fragmentSizeEntry = Entry(middleFrame, width=13)
+    fragmentSizeEntry.grid(row=0, column=4, padx=10)
 
     dataFrame = Frame(root)
     dataFrame.pack(fill="x", padx=10, pady=5)
 
-    dataEntry = Entry(dataFrame, width=50, state="disabled")
+    dataEntry = Entry(dataFrame, width=60, state="disabled")
     dataEntry.grid(row=0, column=0)
     textTransferBtn = Button(dataFrame, text="Poslať Text", state="disabled")
     textTransferBtn.grid(row=0, column=1, padx=10)
@@ -152,7 +156,9 @@ if __name__ == "__main__":
             connectionStartOrEndBtn.config(text="Otvor Spojenie")
 
             if clientOrServer.get() == "server":
-                server.close_socket()
+                server.send_to_client_fin()
+            else:
+                client.send_to_server_fin()
 
 
     connectionStartOrEndBtn = Button(topFrame, text="Otvor Spojenie", command=open_close_connection)
@@ -174,18 +180,7 @@ if __name__ == "__main__":
     messageLogFrame = Frame(messageLogCanvas)
     messageLogCanvas.create_window((0, 0), window=messageLogFrame, anchor="nw")
 
-    root.geometry("500x400")
+    root.geometry("600x400")
     root.resizable(False, False)
     root.title("Svab_PKS_zadanie2")
     root.mainloop()
-
-"""
-serverAddress = ("localhost", 12345)
-
-server.set_server_address(serverAddress)
-client.set_server_address(serverAddress)
-
-Thread(target=server.open_socket).start()
-client.send_to_server("ahoj")
-Thread(target=client.open_socket).start()
-"""

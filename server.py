@@ -68,7 +68,7 @@ def server_listener():
         try:
             data, client_address = serverSocket.recvfrom(DGRAMBufferSize)
 
-            global updateTimer
+            global updateTimer, unacknowledgedQueue
             updateTimer = 0
 
             data_header = data[:15]
@@ -79,32 +79,62 @@ def server_listener():
             print("Server prijal správu:")
             udpExtension.print_header(data_header)
             print("data: " + data_data.decode())
-            print("client_address: " + str(client_address[0]) + ":" + str(client_address[1]))
             print()
 
-            # when receiving syn, save client address and send synack
+            # i got syn, i will save client address and respond with syn-ack
             if flag == 1:
                 global clientIP, clientPort
 
                 clientIP = client_address[0]
                 clientPort = client_address[1]
 
-                threading.Thread(target=send_to_client_synack).start()
-            # i got ack, i will remove unacknowledged standard packet from queue
+                threading.Thread(target=send_to_client_syn_ack).start()
+            # i got ack, i will remove unacknowledged syn-ack packet from queue
+            # or i will remove unacknowledged fin packet from queue
+            # or i will remove unacknowledged standard packet from queue
             elif flag == 2:
                 for unacknowledged_packet in unacknowledgedQueue:
                     unacknowledged_header = unacknowledged_packet.header
 
                     # response of received packet is equal to sqn of unacknowledged packet
                     if udpExtension.get_sqn(unacknowledged_header) == udpExtension.get_response(data_header):
-
-                        # flag of unacknowledged packet is synack
+                        # flag of unacknowledged packet is syn-ack
                         if udpExtension.get_flag(unacknowledged_header) == 3:
                             unacknowledgedQueue.remove(unacknowledged_packet)
                             start_update_receiver()
-            # when receiving update, respond with flag, ack
+                        # flag of unacknowledged packet is fin-ack
+                        elif udpExtension.get_flag(unacknowledged_header) == 10:
+                            unacknowledgedQueue.remove(unacknowledged_packet)
+
+                            unacknowledgedQueue = []
+                            stop_server_listener()
+                            stop_update_receiver()
+                            close_socket()
+                        # flag of unacknowledged packet is standard
+                        elif udpExtension.get_flag(unacknowledged_header) == 0:
+                            unacknowledgedQueue.remove(unacknowledged_packet)
+            # i got update, i will respond with update-ack
             elif flag == 64:
-                send_to_client_updateack(udpExtension.get_sqn(data_header))
+                send_to_client_update_ack(udpExtension.get_sqn(data_header))
+            # i got fin, i will respond with fin-ack
+            elif flag == 8:
+                threading.Thread(target=send_to_client_fin_ack, args=[udpExtension.get_sqn(data_header)]).start()
+            # i got fin-ack, i will remove unacknowledged fin packet from queue, send ack packet and end connection
+            elif flag == 10:
+                for unacknowledged_packet in unacknowledgedQueue:
+                    unacknowledged_header = unacknowledged_packet.header
+
+                    # response of received packet is equal to sqn of unacknowledged packet
+                    if udpExtension.get_sqn(unacknowledged_header) == udpExtension.get_response(data_header):
+                        # flag of unacknowledged packet is fin
+                        if udpExtension.get_flag(unacknowledged_header) == 8:
+                            unacknowledgedQueue.remove(unacknowledged_packet)
+                            send_to_client_ack(udpExtension.get_sqn(data_header))
+
+                            unacknowledgedQueue = []
+                            stop_server_listener()
+                            stop_update_receiver()
+                            close_socket()
 
         except IOError:
             break
@@ -149,7 +179,7 @@ def update_receiver():
     print()
 
 
-def wait_for_ack():
+def wait_for_response():
     error_count = 0
 
     while error_count < 3:
@@ -175,10 +205,20 @@ def wait_for_ack():
     close_socket()
 
 
-def send_to_client_synack():
+def send_to_client_ack(response):
     global cur_sqn
 
-    header = udpExtension.create_synack_header(0, 0)
+    header = udpExtension.create_ack_header(cur_sqn, response)
+
+    send_to_client(header, "")
+
+    cur_sqn += 1
+
+
+def send_to_client_syn_ack():
+    global cur_sqn
+
+    header = udpExtension.create_syn_ack_header(0, 0)
 
     send_to_client(header, "")
 
@@ -186,17 +226,47 @@ def send_to_client_synack():
         unacknowledged_packet = UnacknowledgedPacket(header, "")
         unacknowledgedQueue.append(unacknowledged_packet)
 
-    threading.Thread(target=wait_for_ack).start()
+    threading.Thread(target=wait_for_response).start()
 
     cur_sqn = 1
 
 
-def send_to_client_updateack(response):
+def send_to_client_update_ack(response):
     global cur_sqn
 
-    header = udpExtension.create_updateack_header(cur_sqn, response)
+    header = udpExtension.create_update_ack_header(cur_sqn, response)
 
     send_to_client(header, "")
+
+    cur_sqn += 1
+
+
+def send_to_client_fin():
+    global cur_sqn
+
+    header = udpExtension.create_fin_header(cur_sqn)
+
+    send_to_client(header, "")
+
+    unacknowledged_packet = UnacknowledgedPacket(header, "")
+    unacknowledgedQueue.append(unacknowledged_packet)
+
+    threading.Thread(wait_for_response()).start()
+
+    cur_sqn += 1
+
+
+def send_to_client_fin_ack(response):
+    global cur_sqn
+
+    header = udpExtension.create_fin_ack_header(cur_sqn, response)
+
+    send_to_client(header, "")
+
+    unacknowledged_packet = UnacknowledgedPacket(header, "")
+    unacknowledgedQueue.append(unacknowledged_packet)
+
+    threading.Thread(wait_for_response()).start()
 
     cur_sqn += 1
 

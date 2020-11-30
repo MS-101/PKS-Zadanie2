@@ -10,7 +10,7 @@ def create_syn_header(sqn):
     return header
 
 
-def create_synack_header(sqn, response):
+def create_syn_ack_header(sqn, response):
     header = create_header(0, sqn, response, 3)
 
     return header
@@ -22,7 +22,7 @@ def create_ack_header(sqn, response):
     return header
 
 
-def create_updateack_header(sqn, response):
+def create_update_ack_header(sqn, response):
     header = create_header(0, sqn, response, 66)
 
     return header
@@ -30,6 +30,18 @@ def create_updateack_header(sqn, response):
 
 def create_update_header(sqn):
     header = create_header(0, sqn, 0, 64)
+
+    return header
+
+
+def create_fin_header(sqn):
+    header = create_header(0, sqn, 0, 8)
+
+    return header
+
+
+def create_fin_ack_header(sqn, response):
+    header = create_header(0, sqn, response, 10)
 
     return header
 
