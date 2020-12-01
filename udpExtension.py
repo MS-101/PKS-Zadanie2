@@ -1,3 +1,15 @@
+max_sqn = 2147483647
+
+
+def inc_sqn(sqn):
+    if sqn == max_sqn:
+        sqn = 0
+    else:
+        sqn += 1
+
+    return sqn
+
+
 def create_standard_header(data_length, sqn):
     header = create_header(data_length, sqn, 0, 0)
 

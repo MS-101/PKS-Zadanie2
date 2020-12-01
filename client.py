@@ -1,6 +1,7 @@
 import socket
 import threading
 import time
+import os
 
 import udpExtension
 
@@ -19,6 +20,7 @@ updateSenderOn = False
 
 listenerOpen = False
 unacknowledgedQueues = []
+dataBuffer = []
 cur_sqn = 0
 
 mainGUI = None
@@ -27,6 +29,12 @@ mainGUI = None
 class UnacknowledgedPacket:
     def __init__(self, header, data):
         self.header = header
+        self.data = data
+
+
+class DataBufferElement:
+    def __init__(self, sqn, data):
+        self.sqn = sqn
         self.data = data
 
 
@@ -214,6 +222,8 @@ def client_listener():
                                 unacknowledged_queue.remove(unacknowledged_packet)
                                 if len(unacknowledged_queue) == 0:
                                     unacknowledgedQueues.remove(unacknowledged_queue)
+
+                                mainGUI.send_message("File was sent succesfully!")
             # i got last-text-ack, i will remove unacknowledged last-file packet from queue
             elif flag == 162:
                 for unacknowledged_queue in unacknowledgedQueues:
@@ -227,11 +237,64 @@ def client_listener():
                                 unacknowledged_queue.remove(unacknowledged_packet)
                                 if len(unacknowledged_queue) == 0:
                                     unacknowledgedQueues.remove(unacknowledged_queue)
+
+                                mainGUI.send_message("Message was sent succesfully!")
+            # i got standard packet, i will add data to buffer and respond with ack
+            elif flag == 0 and mainGUI.deviceState.get() == "receiver":
+                threading.Thread(target=send_to_server_ack, args=(udpExtension.get_sqn(data_header),)).start()
+
+                new_data_buffer_element = DataBufferElement(udpExtension.get_sqn(data_header), data_data)
+                dataBuffer.append(new_data_buffer_element)
+            # i got last-file, i will respond with last-file-ack and create file from buffer
+            elif flag == 144:
+                threading.Thread(target=send_to_server_last_file_ack, args=(udpExtension.get_sqn(data_header),)).start()
+
+                create_file_from_buffer(data_data.decode())
+            # i got last-text, i will respond with last-text-ack and create file from buffer
+            elif flag == 160:
+                threading.Thread(target=send_to_server_last_text_ack, args=(udpExtension.get_sqn(data_header),)).start()
+
+                create_text_from_buffer()
         except IOError:
             break
 
     print("KLIENT PRESTAL POČÚVAŤ")
     print()
+
+
+def create_file_from_buffer(filename):
+    if len(dataBuffer) == 0:
+        return
+
+    sorted_buffer = sorted(dataBuffer, key=lambda obj: obj.sqn)
+
+    new_file = open("Output/" + filename, 'wb')
+
+    for buffer_element in sorted_buffer:
+        new_file.write(buffer_element.data)
+
+    new_file.close()
+
+    path = os.path.abspath("Input/" + filename)
+
+    mainGUI.send_message("Received file: " + path)
+
+
+def create_text_from_buffer():
+    if len(dataBuffer) == 0:
+        return
+
+    sorted_buffer = sorted(dataBuffer, key=lambda obj: obj.sqn)
+
+    string_list = []
+    for buffer_element in sorted_buffer:
+        string_list.append(buffer_element.data.decode())
+
+    output_string = ""
+    for string in string_list:
+        output_string += string
+
+    mainGUI.send_message("Received message: " + output_string)
 
 
 def wait_for_response(unacknowledged_queue):
@@ -285,7 +348,7 @@ def send_to_server_fragmented_bytes(remaining_bytes, fragment_size):
 
             unacknowledged_packet = UnacknowledgedPacket(fragment_header, fragment_data)
             unacknowledged_queue.append(unacknowledged_packet)
-            cur_sqn += 1
+            cur_sqn = udpExtension.inc_sqn(cur_sqn)
 
         for unacknowledged_packet in unacknowledged_queue:
             send_to_server(unacknowledged_packet.header, unacknowledged_packet.data)
@@ -345,7 +408,7 @@ def send_to_server_last_file(filename):
 
     threading.Thread(target=wait_for_response, args=(unacknowledged_queue,)).start()
 
-    cur_sqn += 1
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
 
 
 def send_to_server_last_text():
@@ -361,7 +424,27 @@ def send_to_server_last_text():
 
     threading.Thread(target=wait_for_response, args=(unacknowledged_queue,)).start()
 
-    cur_sqn += 1
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
+
+
+def send_to_server_last_text_ack(response):
+    global cur_sqn
+
+    header = udpExtension.create_last_text_ack_header(cur_sqn, response)
+
+    send_to_server(header, b'')
+
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
+
+
+def send_to_server_last_file_ack(response):
+    global cur_sqn
+
+    header = udpExtension.create_last_file_ack_header(cur_sqn, response)
+
+    send_to_server(header, b'')
+
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
 
 
 def send_to_server_ack(response):
@@ -371,7 +454,7 @@ def send_to_server_ack(response):
 
     send_to_server(header, b'')
 
-    cur_sqn += 1
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
 
 
 def send_to_server_syn():
@@ -387,7 +470,7 @@ def send_to_server_syn():
 
     threading.Thread(target=wait_for_response, args=(unacknowledged_queue,)).start()
 
-    cur_sqn += 1
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
 
 
 def send_to_server_update():
@@ -403,7 +486,7 @@ def send_to_server_update():
 
     threading.Thread(target=wait_for_response, args=(unacknowledged_queue,)).start()
 
-    cur_sqn += 1
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
 
 
 def send_to_server_fin():
@@ -419,7 +502,7 @@ def send_to_server_fin():
 
     threading.Thread(target=wait_for_response, args=(unacknowledged_queue,)).start()
 
-    cur_sqn += 1
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
 
 
 def send_to_server_fin_ack(response):
@@ -435,7 +518,7 @@ def send_to_server_fin_ack(response):
 
     threading.Thread(target=wait_for_response, args=(unacknowledged_queue,)).start()
 
-    cur_sqn += 1
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
 
 
 def send_to_server(header, data):
@@ -444,9 +527,6 @@ def send_to_server(header, data):
     print("data: " + str(data))
     print("server_address: " + serverIP + ":" + str(serverPort))
     print()
-
-    global cur_sqn
-    cur_sqn += 1
 
     global updateTimer
     updateTimer = 0

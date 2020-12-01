@@ -6,19 +6,43 @@ from tkinter import ttk
 
 
 def set_entry(entry, text):
+    original_state = entry["state"]
+
+    if original_state != "normal":
+        entry.config(state="normal")
+
     entry.delete("0", "end")
     entry.insert("0", text)
 
+    if original_state != "normal":
+        entry.config(state=original_state)
+
 
 class MainGUI:
+    def send_message(self, message):
+        Label(self.messageLogFrame, text=message).pack()
+
+    def set_client_address(self, client_ip, client_port):
+        set_entry(self.clientIPEntry, client_ip)
+        set_entry(self.clientPortEntry, client_port)
+
     def press_send_file(self):
         filename = self.dataEntry.get()
         fragment_size = int(self.fragmentSizeEntry.get())
 
         if self.clientOrServer.get() == "client":
-            print("test")
             threading.Thread(target=client.send_to_server_file, args=(filename, fragment_size)).start()
-            print("test")
+        else:
+            threading.Thread(target=server.send_to_client_file, args=(filename, fragment_size)).start()
+
+    def press_send_text(self):
+        text = self.dataEntry.get()
+        fragment_size = int(self.fragmentSizeEntry.get())
+
+        if self.clientOrServer.get() == "client":
+            threading.Thread(target=client.send_to_server_text, args=(text, fragment_size)).start()
+        else:
+            threading.Thread(target=server.send_to_client_text, args=(text, fragment_size)).start()
 
     def client_server_switch(self):
         new_state = self.clientOrServer.get()
@@ -43,6 +67,8 @@ class MainGUI:
             self.set_open_connection_buttons()
 
             if self.clientOrServer.get() == "server":
+                self.set_client_address("", "")
+
                 server.set_server_address(self.serverIPEntry.get(), int(self.serverPortEntry.get()))
                 server.bind_socket()
 
@@ -86,10 +112,10 @@ class MainGUI:
         self.clientRadioBtn.config(state="disabled")
         self.serverRadioBtn.config(state="disabled")
 
-        self.clientIPEntry.config(state="readonly")
-        self.clientPortEntry.config(state="readonly")
-        self.serverIPEntry.config(state="readonly")
-        self.serverPortEntry.config(state="readonly")
+        self.clientIPEntry.config(state="disabled")
+        self.clientPortEntry.config(state="disabled")
+        self.serverIPEntry.config(state="disabled")
+        self.serverPortEntry.config(state="disabled")
 
         if self.deviceState.get() == "transmitter":
             self.set_transmitter_buttons()
@@ -193,9 +219,11 @@ class MainGUI:
 
         self.dataEntry = Entry(self.dataFrame, width=60, state="disabled")
         self.dataEntry.grid(row=0, column=0)
-        self.textTransferBtn = Button(self.dataFrame, text="Poslať Text", state="disabled")
+        self.textTransferBtn = Button(self.dataFrame, text="Poslať Text", state="disabled",
+                                      command=self.press_send_text)
         self.textTransferBtn.grid(row=0, column=1, padx=10)
-        self.fileTransferBtn = Button(self.dataFrame, text="Poslať Súbor", state="disabled", command=self.press_send_file)
+        self.fileTransferBtn = Button(self.dataFrame, text="Poslať Súbor", state="disabled",
+                                      command=self.press_send_file)
         self.fileTransferBtn.grid(row=0, column=2, padx=10)
 
         self.clientOrServer = StringVar()
@@ -216,7 +244,7 @@ class MainGUI:
         self.messageLogWrapper = LabelFrame(self.root)
         self.messageLogWrapper.pack(fill="both", expand="yes", padx=10, pady=5)
 
-        self.messageLogCanvas = Canvas(self.messageLogWrapper)
+        self.messageLogCanvas = Canvas(self.messageLogWrapper, width=500)
         self.messageLogCanvas.pack(side=LEFT)
 
         self.yScrollbar = ttk.Scrollbar(self.messageLogWrapper, orient="vertical", command=self.messageLogCanvas.yview)
