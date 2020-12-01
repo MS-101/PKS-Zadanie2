@@ -2,6 +2,7 @@ import socket
 import threading
 import time
 import os
+import zlib
 
 import udpExtension
 
@@ -139,6 +140,14 @@ def client_listener():
             data_header = data[:15]
             data_data = data[15:]
 
+            data_header_without_checksum = data_header[:11]
+            checksum = zlib.crc32(data_header_without_checksum + data_data)
+
+            if udpExtension.get_checksum(data_header) != checksum:
+                print("ERROR! INCORRECT CHECKSUM!")
+                send_to_server_error()
+                break
+
             flag = udpExtension.get_flag(data_header)
 
             print("Klient prijal správu:")
@@ -222,8 +231,7 @@ def client_listener():
                                 unacknowledged_queue.remove(unacknowledged_packet)
                                 if len(unacknowledged_queue) == 0:
                                     unacknowledgedQueues.remove(unacknowledged_queue)
-
-                                mainGUI.send_message("File was sent succesfully!")
+                                    mainGUI.send_message("Súbor bol úspešne odoslaný!")
             # i got last-text-ack, i will remove unacknowledged last-file packet from queue
             elif flag == 162:
                 for unacknowledged_queue in unacknowledgedQueues:
@@ -237,8 +245,7 @@ def client_listener():
                                 unacknowledged_queue.remove(unacknowledged_packet)
                                 if len(unacknowledged_queue) == 0:
                                     unacknowledgedQueues.remove(unacknowledged_queue)
-
-                                mainGUI.send_message("Message was sent succesfully!")
+                                    mainGUI.send_message("Správa bola úspešne odoslaná!")
             # i got standard packet, i will add data to buffer and respond with ack
             elif flag == 0 and mainGUI.deviceState.get() == "receiver":
                 threading.Thread(target=send_to_server_ack, args=(udpExtension.get_sqn(data_header),)).start()
@@ -255,6 +262,15 @@ def client_listener():
                 threading.Thread(target=send_to_server_last_text_ack, args=(udpExtension.get_sqn(data_header),)).start()
 
                 create_text_from_buffer()
+            # i got error, i will resend packet
+            elif flag == 4:
+                for unacknowledged_queue in unacknowledgedQueues:
+                    for unacknowledged_packet in unacknowledged_queue:
+                        unacknowledged_header = unacknowledged_packet.header
+
+                        # response of received packet is equal to sqn of unacknowledged packet
+                        if udpExtension.get_sqn(unacknowledged_header) == udpExtension.get_response(data_header):
+                            send_to_server(unacknowledged_packet.header, unacknowledged_packet.data)
         except IOError:
             break
 
@@ -336,13 +352,13 @@ def send_to_server_fragmented_bytes(remaining_bytes, fragment_size):
     while len(remaining_bytes) > 0 or len(unacknowledged_queue) > 0:
         while len(unacknowledged_queue) < queue_size and len(remaining_bytes) > 0:
             if len(remaining_bytes) > fragment_size:
-                fragment_header = udpExtension.create_standard_header(fragment_size, cur_sqn)
                 fragment_data = remaining_bytes[:fragment_size]
+                fragment_header = udpExtension.create_standard_header(fragment_data, cur_sqn)
 
                 remaining_bytes = remaining_bytes[fragment_size:]
             else:
-                fragment_header = udpExtension.create_standard_header(len(remaining_bytes), cur_sqn)
                 fragment_data = remaining_bytes
+                fragment_header = udpExtension.create_standard_header(fragment_data, cur_sqn)
 
                 remaining_bytes = []
 
@@ -398,7 +414,7 @@ def send_to_server_last_file(filename):
 
     filename_bytes = filename.encode()
 
-    header = udpExtension.create_last_file_header(len(filename_bytes), cur_sqn)
+    header = udpExtension.create_last_file_header(filename_bytes, cur_sqn)
 
     send_to_server(header, filename_bytes)
 
@@ -501,6 +517,16 @@ def send_to_server_fin():
     unacknowledgedQueues.append(unacknowledged_queue)
 
     threading.Thread(target=wait_for_response, args=(unacknowledged_queue,)).start()
+
+    cur_sqn = udpExtension.inc_sqn(cur_sqn)
+
+
+def send_to_server_error(response):
+    global cur_sqn
+
+    header = udpExtension.create_error_header(cur_sqn, response)
+
+    send_to_server(header, b'')
 
     cur_sqn = udpExtension.inc_sqn(cur_sqn)
 

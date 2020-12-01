@@ -4,6 +4,8 @@ import threading
 from tkinter import *
 from tkinter import ttk
 
+maxFragmentSize = 65492
+
 
 def set_entry(entry, text):
     original_state = entry["state"]
@@ -30,6 +32,10 @@ class MainGUI:
         filename = self.dataEntry.get()
         fragment_size = int(self.fragmentSizeEntry.get())
 
+        if fragment_size > maxFragmentSize:
+            self.send_message("MAX FRAGMENT SIZE IS " + str(maxFragmentSize) + "!")
+            return
+
         if self.clientOrServer.get() == "client":
             threading.Thread(target=client.send_to_server_file, args=(filename, fragment_size)).start()
         else:
@@ -38,6 +44,10 @@ class MainGUI:
     def press_send_text(self):
         text = self.dataEntry.get()
         fragment_size = int(self.fragmentSizeEntry.get())
+
+        if fragment_size > maxFragmentSize:
+            self.send_message("MAX FRAGMENT SIZE IS " + str(maxFragmentSize) + "!")
+            return
 
         if self.clientOrServer.get() == "client":
             threading.Thread(target=client.send_to_server_text, args=(text, fragment_size)).start()
