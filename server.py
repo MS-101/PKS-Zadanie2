@@ -107,15 +107,17 @@ def server_listener():
             data_header_without_checksum = data_header[:11]
             checksum = zlib.crc32(data_header_without_checksum + data_data)
 
-            if udpExtension.get_checksum(data_header) != checksum:
-                send_to_client_error(udpExtension.get_sqn(data_header))
-
-            flag = udpExtension.get_flag(data_header)
-
             print("Server prijal správu:")
             udpExtension.print_header(data_header)
             print("data: " + str(data_data))
             print()
+
+            if udpExtension.get_checksum(data_header) != checksum:
+                print("ERROR! INCORRECT CHECKSUM!")
+                threading.Thread(target=send_to_client_error, args=(udpExtension.get_sqn(data_header),)).start()
+                break
+
+            flag = udpExtension.get_flag(data_header)
 
             # i got syn, i will save client address and respond with syn-ack
             if flag == 1:

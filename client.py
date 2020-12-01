@@ -143,17 +143,17 @@ def client_listener():
             data_header_without_checksum = data_header[:11]
             checksum = zlib.crc32(data_header_without_checksum + data_data)
 
-            if udpExtension.get_checksum(data_header) != checksum:
-                print("ERROR! INCORRECT CHECKSUM!")
-                send_to_server_error()
-                break
-
-            flag = udpExtension.get_flag(data_header)
-
             print("Klient prijal správu:")
             udpExtension.print_header(data_header)
             print("data: " + str(data_data))
             print()
+
+            if udpExtension.get_checksum(data_header) != checksum:
+                print("ERROR! INCORRECT CHECKSUM!")
+                threading.Thread(target=send_to_server_error, args=(udpExtension.get_sqn(data_header),)).start()
+                break
+
+            flag = udpExtension.get_flag(data_header)
 
             # i got syn-ack, i will remove unacknowledged syn packet from queue
             if flag == 3:
@@ -510,7 +510,7 @@ def send_to_server_fin():
 
     header = udpExtension.create_fin_header(cur_sqn)
 
-    send_to_server(header, "")
+    send_to_server(header, b'')
 
     unacknowledged_packet = UnacknowledgedPacket(header, b'')
     unacknowledged_queue = [unacknowledged_packet]
@@ -536,7 +536,7 @@ def send_to_server_fin_ack(response):
 
     header = udpExtension.create_fin_ack_header(cur_sqn, response)
 
-    send_to_server(header, "")
+    send_to_server(header, b'')
 
     unacknowledged_packet = UnacknowledgedPacket(header, b'')
     unacknowledged_queue = [unacknowledged_packet]
