@@ -10,6 +10,30 @@ def create_syn_header(sqn):
     return header
 
 
+def create_last_file_header(data_length, sqn):
+    header = create_header(data_length, sqn, 0, 144)
+
+    return header
+
+
+def create_last_text_header(sqn):
+    header = create_header(0, sqn, 0, 160)
+
+    return header
+
+
+def create_last_text_ack_header(sqn, response):
+    header = create_header(0, sqn, response, 162)
+
+    return header
+
+
+def create_last_file_ack_header(sqn, response):
+    header = create_header(0, sqn, response, 146)
+
+    return header
+
+
 def create_syn_ack_header(sqn, response):
     header = create_header(0, sqn, response, 3)
 
