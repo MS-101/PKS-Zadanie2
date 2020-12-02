@@ -172,10 +172,8 @@ def client_listener():
                                     if len(unacknowledged_queue) == 0:
                                         unacknowledgedQueues.remove(unacknowledged_queue)
 
-                        unacknowledged_sqn = udpExtension.get_sqn(data_header)
-
-                        send_to_server_ack(unacknowledged_sqn)
-                        start_update_sender()
+                                        start_update_sender()
+                                        send_to_server_ack(udpExtension.get_sqn(data_header))
                 # i got update-ack, i will remove unacknowledged update packet from queue
                 elif flag == 66:
                     for unacknowledged_queue in unacknowledgedQueues:

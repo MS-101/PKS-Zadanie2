@@ -6,6 +6,8 @@ import client
 import server
 
 maxFragmentSize = 65492
+portMin = 49152
+portMax = 65535
 
 
 def set_entry(entry, text):
@@ -73,6 +75,17 @@ class MainGUI:
 
     def open_close_connection(self):
         if self.connectionOpen is False:
+            if self.clientOrServer.get() == "server":
+                if int(self.serverPortEntry.get()) < portMin or int(self.serverPortEntry.get()) > portMax:
+                    self.send_message("port must be in range: " + str(portMin) + "-" + str(portMax))
+                    return
+
+            if self.clientOrServer.get() == "client":
+                if int(self.serverPortEntry.get()) < portMin or int(self.serverPortEntry.get()) > portMax \
+                        or int(self.clientPortEntry.get()) < portMin or int(self.clientPortEntry.get()) > portMax:
+                    self.send_message("port must be in range: " + str(portMin) + "-" + str(portMax))
+                    return
+
             self.connectionOpen = True
 
             self.set_open_connection_buttons()
@@ -197,7 +210,7 @@ class MainGUI:
         set_entry(self.clientIPEntry, "127.0.0.1")
         self.clientPortEntry = Entry(self.connectionConfigWrapper, width=30)
         self.clientPortEntry.grid(row=1, column=1, pady=10)
-        set_entry(self.clientPortEntry, "8000")
+        set_entry(self.clientPortEntry, "50000")
 
         self.serverIPLabel = Label(self.connectionConfigWrapper, text="Server IP:")
         self.serverIPLabel.grid(row=0, column=2, sticky=W, padx=10, pady=10)
@@ -209,7 +222,7 @@ class MainGUI:
         set_entry(self.serverIPEntry, "127.0.0.2")
         self.serverPortEntry = Entry(self.connectionConfigWrapper, width=30)
         self.serverPortEntry.grid(row=1, column=3, pady=10)
-        set_entry(self.serverPortEntry, "8001")
+        set_entry(self.serverPortEntry, "50001")
 
         self.deviceStateFrame = Frame(self.root)
         self.deviceStateFrame.pack(fill="x", padx=10, pady=5)
