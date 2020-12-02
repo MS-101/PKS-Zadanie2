@@ -150,6 +150,8 @@ class MainGUI:
         self.serverIPEntry.config(state="normal")
         self.serverPortEntry.config(state="normal")
 
+        self.fileReceiveEntry.config(state="disabled")
+        self.fragmentSizeEntry.config(state="disabled")
         self.textTransferEntry.config(state="disabled")
         self.fileTransferEntry.config(state="disabled")
         self.textTransferBtn.config(state="disabled")

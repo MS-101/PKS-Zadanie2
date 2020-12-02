@@ -641,7 +641,7 @@ def send_to_client(header, data):
         else:
             print("PREDOŠLÁ ODOSLANÁ SPRÁVA SA PRI PRENOSE STRATILA!")
             print()
-            
+
             return
 
     serverSocket.sendto(header + data, (clientIP, clientPort))
