@@ -123,7 +123,7 @@ def print_header(header):
     print("sqn: " + str(sqn))
     print("response: " + str(response))
     print("checksum: " + str(checksum))
-    print("flag: " + str(flag))
+    print("flag: " + format(flag, '08b'))
     print("===========================")
 
 

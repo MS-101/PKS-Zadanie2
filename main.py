@@ -1,8 +1,9 @@
-import client
-import server
 import threading
 from tkinter import *
 from tkinter import ttk
+
+import client
+import server
 
 maxFragmentSize = 65492
 
@@ -29,7 +30,7 @@ class MainGUI:
         set_entry(self.clientPortEntry, client_port)
 
     def press_send_file(self):
-        filename = self.dataEntry.get()
+        file_path = self.fileTransferEntry.get()
         fragment_size = int(self.fragmentSizeEntry.get())
 
         if fragment_size > maxFragmentSize:
@@ -37,12 +38,12 @@ class MainGUI:
             return
 
         if self.clientOrServer.get() == "client":
-            threading.Thread(target=client.send_to_server_file, args=(filename, fragment_size)).start()
+            threading.Thread(target=client.send_to_server_file, args=(file_path, fragment_size)).start()
         else:
-            threading.Thread(target=server.send_to_client_file, args=(filename, fragment_size)).start()
+            threading.Thread(target=server.send_to_client_file, args=(file_path, fragment_size)).start()
 
     def press_send_text(self):
-        text = self.dataEntry.get()
+        text = self.textTransferEntry.get()
         fragment_size = int(self.fragmentSizeEntry.get())
 
         if fragment_size > maxFragmentSize:
@@ -149,7 +150,8 @@ class MainGUI:
         self.serverIPEntry.config(state="normal")
         self.serverPortEntry.config(state="normal")
 
-        self.dataEntry.config(state="disabled")
+        self.textTransferEntry.config(state="disabled")
+        self.fileTransferEntry.config(state="disabled")
         self.textTransferBtn.config(state="disabled")
         self.fileTransferBtn.config(state="disabled")
         self.receiverRadioBtn.config(state="disabled")
@@ -158,14 +160,18 @@ class MainGUI:
         self.connectionStartOrEndBtn.config(text="Otvor Spojenie")
 
     def set_receiver_buttons(self):
+        self.fileReceiveEntry.config(state="normal")
         self.fragmentSizeEntry.config(state="disabled")
-        self.dataEntry.config(state="disabled")
+        self.fileTransferEntry.config(state="disabled")
+        self.textTransferEntry.config(state="disabled")
         self.textTransferBtn.config(state="disabled")
         self.fileTransferBtn.config(state="disabled")
 
     def set_transmitter_buttons(self):
+        self.fileReceiveEntry.config(state="disabled")
         self.fragmentSizeEntry.config(state="normal")
-        self.dataEntry.config(state="normal")
+        self.fileTransferEntry.config(state="normal")
+        self.textTransferEntry.config(state="normal")
         self.textTransferBtn.config(state="normal")
         self.fileTransferBtn.config(state="normal")
 
@@ -203,37 +209,61 @@ class MainGUI:
         self.serverPortEntry.grid(row=1, column=3, pady=10)
         set_entry(self.serverPortEntry, "8001")
 
-        self.middleFrame = Frame(self.root)
-        self.middleFrame.pack(fill="x", padx=10, pady=5)
+        self.deviceStateFrame = Frame(self.root)
+        self.deviceStateFrame.pack(fill="x", padx=10, pady=5)
 
         self.deviceState = StringVar()
         self.deviceState.set("receiver")
 
-        self.deviceStateConfigLabel = Label(self.middleFrame, text="Stav komunikujúceho uzla:")
+        self.deviceStateConfigLabel = Label(self.deviceStateFrame, text="Stav komunikujúceho uzla:")
         self.deviceStateConfigLabel.grid(row=0, column=0, sticky=W, padx=10)
-        self.receiverRadioBtn = Radiobutton(self.middleFrame, text="Prijímač", variable=self.deviceState,
+        self.receiverRadioBtn = Radiobutton(self.deviceStateFrame, text="Prijímač", variable=self.deviceState,
                                             value="receiver", state="disabled",
                                             command=self.transmitter_receiver_switch)
         self.receiverRadioBtn.grid(row=0, column=1, padx=10)
-        self.transmitterRadioBtn = Radiobutton(self.middleFrame, text="Vysielač", variable=self.deviceState,
+        self.transmitterRadioBtn = Radiobutton(self.deviceStateFrame, text="Vysielač", variable=self.deviceState,
                                                value="transmitter", state="disabled",
                                                command=self.transmitter_receiver_switch)
         self.transmitterRadioBtn.grid(row=0, column=2, padx=10)
-        self.fragmentSizeLabel = Label(self.middleFrame, text="Veľkosť fragmentov:")
-        self.fragmentSizeLabel.grid(row=0, column=3, padx=10)
-        self.fragmentSizeEntry = Entry(self.middleFrame, width=13, state="disabled")
-        self.fragmentSizeEntry.grid(row=0, column=4, padx=10)
 
-        self.dataFrame = Frame(self.root)
-        self.dataFrame.pack(fill="x", padx=10, pady=5)
+        self.fileReceiveFrame = Frame(self.root)
+        self.fileReceiveFrame.pack(fill="x", padx=10, pady=5)
 
-        self.dataEntry = Entry(self.dataFrame, width=60, state="disabled")
-        self.dataEntry.grid(row=0, column=0)
-        self.textTransferBtn = Button(self.dataFrame, text="Poslať Text", state="disabled",
-                                      command=self.press_send_text)
+        self.fileReceiveLabel = Label(self.fileReceiveFrame, text="Adresár prijatých súborov:")
+        self.fileReceiveLabel.grid(row=0, column=0, padx=10)
+        self.fileReceiveEntry = Entry(self.fileReceiveFrame, width=60, state="disabled")
+        set_entry(self.fileReceiveEntry, "Receiver")
+        self.fileReceiveEntry.grid(row=0, column=1, padx=10)
+
+        self.fragmentsFrame = Frame(self.root)
+        self.fragmentsFrame.pack(fill="x", padx=10, pady=5)
+
+        self.fragmentSizeLabel = Label(self.fragmentsFrame, text="Veľkosť fragmentov:")
+        self.fragmentSizeLabel.grid(row=0, column=0, padx=10)
+        self.fragmentSizeEntry = Entry(self.fragmentsFrame, width=20, state="disabled")
+        set_entry(self.fragmentSizeEntry, "4")
+        self.fragmentSizeEntry.grid(row=0, column=1, padx=10)
+        self.fragmentSizeWarning = Label(self.fragmentsFrame, text="(Maximálna veľkosť fragmentov je " + str(maxFragmentSize) + " B)")
+        self.fragmentSizeWarning.grid(row=0, column=2, padx=10)
+
+        self.textTransferFrame = Frame(self.root)
+        self.textTransferFrame.pack(fill="x", padx=10, pady=5)
+
+        self.textTransferEntry = Entry(self.textTransferFrame, width=70, state="disabled")
+        set_entry(self.textTransferEntry, "Hello world!")
+        self.textTransferEntry.grid(row=0, column=0)
+        self.textTransferBtn = Button(self.textTransferFrame, text="Poslať Text", state="disabled",
+                                      command=self.press_send_text, width=15)
         self.textTransferBtn.grid(row=0, column=1, padx=10)
-        self.fileTransferBtn = Button(self.dataFrame, text="Poslať Súbor", state="disabled",
-                                      command=self.press_send_file)
+
+        self.fileTransferFrame = Frame(self.root)
+        self.fileTransferFrame.pack(fill="x", padx=10, pady=5)
+
+        self.fileTransferEntry = Entry(self.fileTransferFrame, width=70, state="disabled")
+        self.fileTransferEntry.grid(row=0, column=0)
+        set_entry(self.fileTransferEntry, "Transmitter/test1.txt")
+        self.fileTransferBtn = Button(self.fileTransferFrame, text="Poslať Súbor", state="disabled",
+                                      command=self.press_send_file, width=15)
         self.fileTransferBtn.grid(row=0, column=2, padx=10)
 
         self.clientOrServer = StringVar()
@@ -254,7 +284,7 @@ class MainGUI:
         self.messageLogWrapper = LabelFrame(self.root)
         self.messageLogWrapper.pack(fill="both", expand="yes", padx=10, pady=5)
 
-        self.messageLogCanvas = Canvas(self.messageLogWrapper, width=500)
+        self.messageLogCanvas = Canvas(self.messageLogWrapper, width=600)
         self.messageLogCanvas.pack(side=LEFT)
 
         self.yScrollbar = ttk.Scrollbar(self.messageLogWrapper, orient="vertical", command=self.messageLogCanvas.yview)
@@ -262,13 +292,12 @@ class MainGUI:
 
         self.messageLogCanvas.configure(yscrollcommand=self.yScrollbar.set)
 
-        self.messageLogCanvas.bind('<Configure>', lambda e: self.messageLogCanvas.configure(
-            scrollregion=self.messageLogCanvas.bbox("all")))
+        self.messageLogCanvas.bind('<Configure>', lambda e: self.messageLogCanvas.configure(scrollregion=self.messageLogCanvas.bbox("all")))
 
         self.messageLogFrame = Frame(self.messageLogCanvas)
         self.messageLogCanvas.create_window((0, 0), window=self.messageLogFrame, anchor="nw")
 
-        self.root.geometry("600x400")
+        self.root.geometry("600x500")
         self.root.resizable(False, False)
         self.root.title("Svab_PKS_zadanie2")
 
