@@ -153,7 +153,6 @@ def server_listener():
                                     unacknowledged_queue.remove(unacknowledged_packet)
                 # i got update, i will respond with update-ack
                 elif flag == 64:
-                    print("RESPONDING TO UPDATE")
                     send_to_client_update_ack(udpExtension.get_sqn(data_header))
                 # i got fin, i will respond with fin-ack
                 elif flag == 8:
@@ -636,9 +635,13 @@ def send_to_client(header, data):
 
         if random_num > 50:
             print("PREDOŠLÁ ODOSLANÁ SPRÁVA SA PRI PRENOSE POŠKODILA!")
+            print()
+
             data = "chyba".encode()
         else:
             print("PREDOŠLÁ ODOSLANÁ SPRÁVA SA PRI PRENOSE STRATILA!")
+            print()
+            
             return
 
     serverSocket.sendto(header + data, (clientIP, clientPort))

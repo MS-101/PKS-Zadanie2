@@ -655,9 +655,13 @@ def send_to_server(header, data):
 
         if random_num > 50:
             print("PREDOŠLÁ ODOSLANÁ SPRÁVA SA PRI PRENOSE POŠKODILA!")
+            print()
+
             data = "chyba".encode()
         else:
             print("PREDOŠLÁ ODOSLANÁ SPRÁVA SA PRI PRENOSE STRATILA!")
+            print()
+
             return
 
     clientSocket.sendto(header + data, (serverIP, serverPort))
