@@ -30,6 +30,11 @@ fragmentCount = 0
 mainGUI = None
 
 
+messages_till_error_init = 13
+messages_till_error = messages_till_error_init
+onlyLostError = False
+
+
 class Packet:
     def __init__(self, header, data):
         self.header = header
@@ -443,9 +448,21 @@ def send_to_server_file(file_path, fragment_size):
 
 
 def send_to_server_text(text, fragment_size):
+    global messages_till_error_init, messages_till_error, onlyLostError
+
     text_bytes = text.encode()
 
+    if mainGUI.standardOrExtra.get() == "extra":
+        messages_till_error_init = 2
+        messages_till_error = messages_till_error_init
+        onlyLostError = True
+
     end_message = send_to_server_fragmented_bytes(text_bytes, fragment_size)
+
+    if mainGUI.standardOrExtra.get() == "extra":
+        messages_till_error_init = 13
+        messages_till_error = messages_till_error_init
+        onlyLostError = False
 
     if end_message == "ok":
         threading.Thread(target=send_to_server_last_text).start()
@@ -629,10 +646,6 @@ def send_to_server_fin_ack(response):
     cur_sqn = udpExtension.inc_sqn(cur_sqn)
 
 
-messages_till_error_init = 13
-messages_till_error = messages_till_error_init
-
-
 def send_to_server(header, data):
     global messages_till_error
 
@@ -651,16 +664,16 @@ def send_to_server(header, data):
 
         random_num = random.randrange(100)
 
-        if random_num > 50:
-            print("PREDOŠLÁ ODOSLANÁ SPRÁVA SA PRI PRENOSE POŠKODILA!")
-            print()
-
-            data = "chyba".encode()
-        else:
+        if random_num > 50 or onlyLostError is True:
             print("PREDOŠLÁ ODOSLANÁ SPRÁVA SA PRI PRENOSE STRATILA!")
             print()
 
             return
+        else:
+            print("PREDOŠLÁ ODOSLANÁ SPRÁVA SA PRI PRENOSE POŠKODILA!")
+            print()
+
+            data = "chyba".encode()
 
     clientSocket.sendto(header + data, (serverIP, serverPort))
 

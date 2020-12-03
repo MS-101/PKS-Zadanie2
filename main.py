@@ -181,6 +181,8 @@ class MainGUI:
         self.textTransferEntry.config(state="disabled")
         self.textTransferBtn.config(state="disabled")
         self.fileTransferBtn.config(state="disabled")
+        self.standardBtn.config(state="disabled")
+        self.extraBtn.config(state="disabled")
 
     def set_transmitter_buttons(self):
         self.fileReceiveEntry.config(state="disabled")
@@ -189,6 +191,8 @@ class MainGUI:
         self.textTransferEntry.config(state="normal")
         self.textTransferBtn.config(state="normal")
         self.fileTransferBtn.config(state="normal")
+        self.standardBtn.config(state="normal")
+        self.extraBtn.config(state="normal")
 
     def __init__(self):
         self.root = Tk()
@@ -295,6 +299,21 @@ class MainGUI:
 
         self.connectionStartOrEndBtn = Button(self.topFrame, text="Otvor Spojenie", command=self.open_close_connection)
         self.connectionStartOrEndBtn.grid(row=0, column=3)
+
+        self.extraFrame = Frame(self.root)
+        self.extraFrame.pack(fill="x", padx=10, pady=5)
+
+        self.standardOrExtra = StringVar()
+        self.standardOrExtra.set("standard")
+
+        self.standardOrExtraLabel = Label(self.extraFrame, text="Prepni medzi finálnym riešením a doimplementáciou:")
+        self.standardOrExtraLabel.grid(row=0, column=0, sticky=W, padx=10)
+        self.standardBtn = Radiobutton(self.extraFrame, text="Classic", variable=self.standardOrExtra, value="standard",
+                                       state="disabled")
+        self.standardBtn.grid(row=0, column=1, padx=10)
+        self.extraBtn = Radiobutton(self.extraFrame, text="Doimplementácia", variable=self.standardOrExtra,
+                                    value="extra", state="disabled")
+        self.extraBtn.grid(row=0, column=2, padx=10)
 
         self.messageLogWrapper = LabelFrame(self.root)
         self.messageLogWrapper.pack(fill="both", expand="yes", padx=10, pady=5)
